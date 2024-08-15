@@ -1,0 +1,15 @@
+{
+	"authors": [
+		"Andrew Lalis"
+	],
+	"copyright": "Copyright © 2024, Andrew Lalis",
+	"dependencies": {
+		"handy-http-primitives": {
+			"path": "../primitives"
+		},
+		"streams": "~>3.5.0"
+	},
+	"description": "Implementations of HTTP transport protocols.",
+	"license": "MIT",
+	"name": "handy-http-transport"
+}

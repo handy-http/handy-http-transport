@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/handy-http-transport
+handy-http-transport.so
+handy-http-transport.dylib
+handy-http-transport.dll
+handy-http-transport.a
+handy-http-transport.lib
+handy-http-transport-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst
