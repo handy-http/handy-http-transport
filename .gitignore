@@ -14,3 +14,4 @@ handy-http-transport-test-*
 *.o
 *.obj
 *.lst
+*.a

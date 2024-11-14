@@ -10,6 +10,6 @@
 		"streams": "~>3.5.0"
 	},
 	"description": "Implementations of HTTP transport protocols.",
-	"license": "MIT",
+	"license": "CC0",
 	"name": "handy-http-transport"
 }

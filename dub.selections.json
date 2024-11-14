@@ -1,0 +1,7 @@
+{
+	"fileVersion": 1,
+	"versions": {
+		"handy-http-primitives": {"path":"../primitives"},
+		"streams": "3.5.0"
+	}
+}

@@ -1,2 +1,5 @@
+/**
+ * This package defines the Handy-Http implementation of HTTP/1.1.
+ */
 module handy_http_transport.http1;
 
