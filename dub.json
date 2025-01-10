@@ -4,9 +4,8 @@
 	],
 	"copyright": "Copyright © 2024, Andrew Lalis",
 	"dependencies": {
-		"handy-http-primitives": {
-			"path": "../primitives"
-		},
+		"handy-http-primitives": "~>1.0.0",
+		"photon": "~>0.10.2",
 		"streams": "~>3.5.0"
 	},
 	"description": "Implementations of HTTP transport protocols.",

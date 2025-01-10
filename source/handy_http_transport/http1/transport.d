@@ -1,48 +1,56 @@
 module handy_http_transport.http1.transport;
 
-import std.socket; // TODO: Implement this without std.socket?
-import std.stdio;
+import std.socket;
 
 import handy_http_transport.interfaces;
 import handy_http_primitives;
 
 import streams;
+import photon;
 
 /**
- * The HTTP/1.1 transport protocol implementation.
+ * The HTTP/1.1 transport protocol implementation, using Dimitry Olshansky's
+ * Photon fiber scheduling library for concurrency.
  */
 class Http1Transport : HttpTransport {
     private Socket serverSocket;
     private HttpRequestHandler requestHandler;
+    private const ushort port;
     private bool running = false;
 
-    this(HttpRequestHandler requestHandler) {
+    this(HttpRequestHandler requestHandler, ushort port = 8080) {
+        assert(requestHandler !is null);
         this.serverSocket = new TcpSocket();
         this.requestHandler = requestHandler;
+        this.port = port;
     }
 
     void start() {
-        this.running = true;
-        serverSocket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, 1);
-        serverSocket.bind(new InternetAddress("127.0.0.1", 8080));
-        serverSocket.listen(100);
-        while (running) {
-            try {
-                Socket clientSocket = serverSocket.accept();
-                import core.thread.osthread;
-                Thread t = new Thread(() => handleClient(clientSocket, requestHandler));
-                t.start();
-            } catch (SocketAcceptException e) {
-                import std.stdio;
-                stderr.writefln!"Failed to accept socket connection: %s"(e);
-            }
-        }
+        startloop();
+        go(() => runServer());
+        runFibers();
     }
 
     void stop() {
         this.running = false;
         this.serverSocket.shutdown(SocketShutdown.BOTH);
         this.serverSocket.close();
+    }
+
+    private void runServer() {
+        this.running = true;
+        serverSocket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, 1);
+        serverSocket.bind(new InternetAddress("127.0.0.1", port));
+        serverSocket.listen(100);
+        while (running) {
+            try {
+                Socket clientSocket = serverSocket.accept();
+                go(() => handleClient(clientSocket, requestHandler));
+            } catch (SocketAcceptException e) {
+                import std.stdio;
+                stderr.writefln!"Failed to accept socket connection: %s"(e);
+            }
+        }
     }
 }
 
@@ -60,19 +68,23 @@ void handleClient(Socket clientSocket, HttpRequestHandler requestHandler) {
     auto bufferedInput = bufferedInputStreamFor!(8192)(inputStream);
     auto result = readHttpRequest(&bufferedInput);
     if (result.hasError) {
+        import std.stdio;
         stderr.writeln("Failed to read HTTP request: " ~ result.error.message);
         inputStream.closeStream();
         return;
     }
-    ServerHttpRequest request = result.request;
-    ServerHttpResponse response;
+    scope ServerHttpRequest request = result.request;
+    scope ServerHttpResponse response;
     SocketOutputStream outputStream = SocketOutputStream(clientSocket);
     response.outputStream = outputStreamObjectFor(HttpResponseOutputStream!(SocketOutputStream*)(
         &outputStream,
         &response
     ));
-    if (requestHandler !is null) {
+    try {
         requestHandler.handle(request, response);
+    } catch (Exception e) {
+        import std.stdio;
+        stderr.writeln("Exception thrown while handling request: " ~ e.msg);
     }
     inputStream.closeStream();
 }
@@ -214,7 +226,7 @@ private string stripSpaces(string s) {
 
 /**
  * Helper function to append an unsigned integer value to a char buffer. It is
- * assumed that there's enough space to write value.
+ * assumed that there's enough space to write the value.
  * Params:
  *   value = The value to append.
  *   buffer = The buffer to append to.
@@ -314,11 +326,11 @@ unittest {
     class TestHandler : HttpRequestHandler {
         void handle(ref ServerHttpRequest request, ref ServerHttpResponse response) {
             response.status = HttpStatus.OK;
-            response.headers.add("ContentType", "application/json");
+            response.headers.add("Content-Type", "application/json");
             response.outputStream.writeToStream(cast(ubyte[]) "{\"a\": 1}");
         }
     }
 
-    HttpTransport tp = new Http1Transport(new TestHandler());
+    HttpTransport tp = new Http1Transport(new TestHandler(), 8080);
     tp.start();
 }
