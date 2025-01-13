@@ -7,6 +7,7 @@ import handy_http_transport.helpers;
 import handy_http_transport.response_output_stream;
 
 import handy_http_primitives;
+import handy_http_primitives.address;
 
 import streams;
 import photon;
@@ -69,7 +70,10 @@ class Http1Transport : HttpTransport {
 void handleClient(Socket clientSocket, HttpRequestHandler requestHandler) {
     auto inputStream = SocketInputStream(clientSocket);
     auto bufferedInput = bufferedInputStreamFor!(8192)(inputStream);
-    auto result = readHttpRequest(&bufferedInput);
+    // Get remote address from the socket.
+    import handy_http_primitives.address;
+    ClientAddress addr = getAddress(clientSocket);
+    auto result = readHttpRequest(&bufferedInput, addr);
     if (result.hasError) {
         import std.stdio;
         stderr.writeln("Failed to read HTTP request: " ~ result.error.message);
@@ -92,6 +96,41 @@ void handleClient(Socket clientSocket, HttpRequestHandler requestHandler) {
     inputStream.closeStream();
 }
 
+/**
+ * Gets a ClientAddress value from a socket's address information.
+ * Params:
+ *   socket = The socket to get address information for.
+ * Returns: The address that was obtained.
+ */
+ClientAddress getAddress(Socket socket) {
+    try {
+        Address addr = socket.remoteAddress();
+        if (auto a = cast(InternetAddress) addr) {
+            union U {
+                ubyte[4] bytes;
+                uint intValue;
+            }
+            U u;
+            u.intValue = a.addr();
+            return ClientAddress.ofIPv4(IPv4InternetAddress(
+                u.bytes,
+                a.port()
+            ));
+        } else if (auto a = cast(Internet6Address) addr) {
+            return ClientAddress.ofIPv6(IPv6InternetAddress(
+                a.addr(),
+                a.port()
+            ));
+        } else if (auto a = cast(UnixAddress) addr) {
+            return ClientAddress.ofUnixSocket(UnixSocketAddress(a.path()));
+        } else {
+            return ClientAddress(ClientAddressType.UNKNOWN);
+        }
+    } catch (SocketOSException e) {
+        return ClientAddress(ClientAddressType.UNKNOWN);
+    }
+}
+
 /// Alias for the result of the `readHttpRequest` function which parses HTTP requests.
 alias HttpRequestParseResult = Either!(ServerHttpRequest, "request", StreamError, "error");
 
@@ -99,11 +138,10 @@ alias HttpRequestParseResult = Either!(ServerHttpRequest, "request", StreamError
  * Parses an HTTP/1.1 request from a byte input stream.
  * Params:
  *   inputStream = The byte input stream to read from.
+ *   addr = The client address, used in constructed the http request struct.
  * Returns: Either the request which was parsed, or a stream error.
  */
-HttpRequestParseResult readHttpRequest(S)(S inputStream) if (isByteInputStream!S) {
-    import handy_http_primitives.address;
-
+HttpRequestParseResult readHttpRequest(S)(S inputStream, in ClientAddress addr) if (isByteInputStream!S) {
     auto methodStr = consumeUntil(inputStream, " ");
     if (methodStr.hasError) return HttpRequestParseResult(methodStr.error);
     auto urlStr = consumeUntil(inputStream, " ");
@@ -123,7 +161,7 @@ HttpRequestParseResult readHttpRequest(S)(S inputStream) if (isByteInputStream!S
 
     return HttpRequestParseResult(ServerHttpRequest(
         httpVersion,
-        ClientAddress.init, // TODO: Get this from the socket, if possible?
+        addr,
         methodStr.value,
         urlStr.value,
         headersResult.headers,
