@@ -159,11 +159,13 @@ HttpRequestParseResult readHttpRequest(S)(S inputStream, in ClientAddress addr) 
     auto headersResult = parseHeaders(inputStream);
     if (headersResult.hasError) return HttpRequestParseResult(headersResult.error);
 
+    import std.uri : decode; // TODO: Remove dependency on phobos for this?
+
     return HttpRequestParseResult(ServerHttpRequest(
         httpVersion,
         addr,
         methodStr.value,
-        urlStr.value,
+        decode(urlStr.value),
         headersResult.headers,
         inputStreamObjectFor(inputStream)
     ));

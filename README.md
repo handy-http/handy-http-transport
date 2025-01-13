@@ -1,6 +1,12 @@
 # http-transport
 
-Implementations of HTTP transport protocols, compatible with other Handy-Http components.
+This library provides implementations of various versions of HTTP transport,
+acting as a "glue" for connecting clients and servers. Practically speaking,
+the handy-http-transport library provides HTTP server implementations you can
+use interchangeably with other handy-http libraries.
+
+For now, see the section on HTTP/1.1, as that's the only HTTP version
+implemented so far.
 
 ## HTTP/1.1
 
