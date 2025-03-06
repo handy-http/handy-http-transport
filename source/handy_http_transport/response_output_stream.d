@@ -50,28 +50,53 @@ struct HttpResponseOutputStream(S) if (isByteOutputStream!S) {
      * Returns: The stream result of writing.
      */
     StreamResult writeHeaders() {
-        // TODO: Come up with a better way of writing headers than string concatenation.
         size_t idx = 0;
         char[6] statusCodeBuffer; // Normal HTTP codes are 3 digits, but this leaves room for extensions.
         writeUIntToBuffer(response.status.code, statusCodeBuffer, idx);
-
-        string statusAndHeaders = "HTTP/1.1 "
-            ~ cast(string) statusCodeBuffer[0..idx]
-            ~ " " ~ response.status.text
-            ~ "\r\n";
+        // Write the status line.
+        StreamResult r = outputStream.writeToStream(cast(ubyte[]) "HTTP/1.1 ");
+        if (r.hasError) return r;
+        size_t writeCount = r.count;
+        r = outputStream.writeToStream(cast(ubyte[]) statusCodeBuffer[0..idx]);
+        if (r.hasError) return r;
+        writeCount += r.count;
+        r = outputStream.writeToStream([' ']);
+        if (r.hasError) return r;
+        writeCount += r.count;
+        r = outputStream.writeToStream(cast(ubyte[]) response.status.text);
+        if (r.hasError) return r;
+        writeCount += r.count;
+        r = outputStream.writeToStream(['\r', '\n']);
+        if (r.hasError) return r;
+        writeCount += r.count;
+        
         foreach (headerName; response.headers.keys) {
-            string headerLine = headerName ~ ": ";
+            // Write the header name.
+            r = outputStream.writeToStream(cast(ubyte[]) headerName);
+            if (r.hasError) return r;
+            writeCount += r.count;
+            r = outputStream.writeToStream([':', ' ']);
+            if (r.hasError) return r;
+            writeCount += r.count;
+            // Write the comma-separated list of values.
             string[] headerValues = response.headers.getAll(headerName);
             for (size_t i = 0; i < headerValues.length; i++) {
-                headerLine ~= headerValues[i];
+                r = outputStream.writeToStream(cast(ubyte[]) headerValues[i]);
+                if (r.hasError) return r;
+                writeCount += r.count;
                 if (i + 1 < headerValues.length) {
-                    headerLine ~= ", ";
+                    r = outputStream.writeToStream([',', ' ']);
+                    if (r.hasError) return r;
+                    writeCount += r.count;
                 }
             }
-            headerLine ~= "\r\n";
-            statusAndHeaders ~= headerLine;
+            r = outputStream.writeToStream(['\r', '\n']);
+            if (r.hasError) return r;
+            writeCount += r.count;
         }
-        statusAndHeaders ~= "\r\n"; // Trailing CLRF before the body.
-        return outputStream.writeToStream(cast(ubyte[]) statusAndHeaders);
+        r = outputStream.writeToStream(['\r', '\n']); // Trailing CLRF before the body.
+        if (r.hasError) return r;
+        writeCount += r.count;
+        return StreamResult(cast(uint) writeCount);
     }
 }

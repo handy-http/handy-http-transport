@@ -201,15 +201,15 @@ Either!(string[][string], "headers", StreamError, "error") parseHeaders(S)(S inp
     return Either!(string[][string], "headers", StreamError, "error")(headers);
 }
 
-unittest {
-    class TestHandler : HttpRequestHandler {
-        void handle(ref ServerHttpRequest request, ref ServerHttpResponse response) {
-            response.status = HttpStatus.OK;
-            response.headers.add("Content-Type", "application/json");
-            response.outputStream.writeToStream(cast(ubyte[]) "{\"a\": 1}");
-        }
-    }
+// unittest {
+//     class TestHandler : HttpRequestHandler {
+//         void handle(ref ServerHttpRequest request, ref ServerHttpResponse response) {
+//             response.status = HttpStatus.OK;
+//             response.headers.add("Content-Type", "application/json");
+//             response.outputStream.writeToStream(cast(ubyte[]) "{\"a\": 1}");
+//         }
+//     }
 
-    HttpTransport tp = new Http1Transport(new TestHandler(), 8080);
-    tp.start();
-}
+//     HttpTransport tp = new Http1Transport(new TestHandler(), 8080);
+//     tp.start();
+// }

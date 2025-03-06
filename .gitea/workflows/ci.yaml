@@ -1,0 +1,19 @@
+name: Build and Test Module
+on:
+  push:
+    paths:
+      - 'source/**'
+      - '.gitea/workflows/ci.yaml'
+  pull_request:
+    types: [opened, reopened, synchronize]
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup DLang
+        uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ldc-latest
+      - name: Build and Test
+        run: dub -q test
