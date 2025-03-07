@@ -11,7 +11,7 @@ import streams;
  * Returns: The string that was read, or a stream error.
  */
 Either!(string, "value", StreamError, "error") consumeUntil(S)(
-    S inputStream,
+    ref S inputStream,
     string target
 ) if (isByteInputStream!S) {
     ubyte[1024] buffer;
@@ -61,11 +61,20 @@ ptrdiff_t indexOf(string s, char c, size_t offset = 0) {
 string stripSpaces(string s) {
     if (s.length == 0) return s;
     ptrdiff_t startIdx = 0;
-    while (s[startIdx] == ' ' && startIdx < s.length) startIdx++;
+    while (startIdx < s.length && s[startIdx] == ' ') startIdx++;
     s = s[startIdx .. $];
+    if (s.length == 0) return "";
     ptrdiff_t endIdx = s.length - 1;
     while (s[endIdx] == ' ' && endIdx >= 0) endIdx--;
     return s[0 .. endIdx + 1];
+}
+
+unittest {
+    assert(stripSpaces("") == "");
+    assert(stripSpaces("    ") == "");
+    assert(stripSpaces("test") == "test");
+    assert(stripSpaces("  test") == "test");
+    assert(stripSpaces("  test string   ") == "test string");
 }
 
 /**
