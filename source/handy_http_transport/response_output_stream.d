@@ -100,3 +100,25 @@ struct HttpResponseOutputStream(S) if (isByteOutputStream!S) {
         return StreamResult(cast(uint) writeCount);
     }
 }
+
+// Test basic functionality for writing a standard response with headers and a
+// body.
+unittest {
+    import handy_http_primitives.response;
+
+    ArrayOutputStream!ubyte os;
+    ServerHttpResponse resp;
+    resp.status = HttpStatus.OK;
+    resp.headers.add("Content-Type", "text/plain");
+    auto httpOut = HttpResponseOutputStream!(ArrayOutputStream!ubyte*)(&os, &resp);
+    resp.outputStream = outputStreamObjectFor(httpOut);
+    StreamResult r = resp.outputStream.writeToStream(cast(ubyte[]) "Hello world!");
+    const expectedOutput =
+        "HTTP/1.1 200 OK\r\n" ~
+        "Content-Type: text/plain\r\n" ~
+        "\r\n" ~
+        "Hello world!";
+    assert(os.toArray() == expectedOutput);
+    assert(r.hasCount);
+    assert(r.count == os.toArray().length);
+}
