@@ -97,7 +97,10 @@ void handleClient(Socket clientSocket, HttpRequestHandler requestHandler) {
         stderr.writeln("Throwable error while handling request: " ~ t.msg);
         throw t;
     }
-    inputStream.closeStream();
+    
+    if (response.status != HttpStatus.SWITCHING_PROTOCOLS) {
+        inputStream.closeStream();
+    }
 }
 
 // Test case where we use a local socket pair to test the full handleClient
@@ -194,6 +197,8 @@ HttpRequestParseResult readHttpRequest(S)(S inputStream, in ClientAddress addr) 
     auto headersResult = parseHeaders(inputStream);
     if (headersResult.hasError) return HttpRequestParseResult(headersResult.error);
 
+    auto queryParams = parseQueryParameters(urlStr.value);
+
     import std.uri : decode; // TODO: Remove dependency on phobos for this?
 
     return HttpRequestParseResult(ServerHttpRequest(
@@ -202,6 +207,7 @@ HttpRequestParseResult readHttpRequest(S)(S inputStream, in ClientAddress addr) 
         methodStr.value,
         decode(urlStr.value),
         headersResult.headers,
+        queryParams,
         inputStreamObjectFor(inputStream)
     ));
 }

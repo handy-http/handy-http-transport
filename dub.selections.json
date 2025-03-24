@@ -1,9 +1,9 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"handy-http-primitives": "1.2.0",
+		"handy-http-primitives": "1.5.0",
 		"photon": "0.10.2",
 		"sharded-map": "2.7.0",
-		"streams": "3.5.0"
+		"streams": "3.6.0"
 	}
 }
