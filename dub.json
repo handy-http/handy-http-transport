@@ -6,7 +6,8 @@
 	"dependencies": {
 		"handy-http-primitives": "~>1.6",
 		"photon": "~>0.10",
-		"streams": "~>3.6"
+		"streams": "~>3.6",
+		"slf4d": "~>4.0"
 	},
 	"description": "Implementations of HTTP transport protocols.",
 	"license": "CC0",

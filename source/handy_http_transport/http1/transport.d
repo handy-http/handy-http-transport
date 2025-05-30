@@ -10,6 +10,7 @@ import handy_http_primitives;
 import handy_http_primitives.address;
 
 import streams;
+import slf4d;
 import photon;
 
 /**
@@ -30,12 +31,14 @@ class Http1Transport : HttpTransport {
     }
 
     void start() {
+        debugF!"Starting HTTP1Transport server on port %d."(port);
         startloop();
         go(() => runServer());
         runFibers();
     }
 
     void stop() {
+        debugF!"Stopping HTTP1Transport server on port %d."(port);
         this.running = false;
         this.serverSocket.shutdown(SocketShutdown.BOTH);
         this.serverSocket.close();
@@ -45,14 +48,14 @@ class Http1Transport : HttpTransport {
         this.running = true;
         serverSocket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, 1);
         serverSocket.bind(new InternetAddress("127.0.0.1", port));
+        traceF!"Bound to %s."(serverSocket.localAddress().toString());
         serverSocket.listen(100);
         while (running) {
             try {
                 Socket clientSocket = serverSocket.accept();
                 go(() => handleClient(clientSocket, requestHandler));
             } catch (SocketAcceptException e) {
-                import std.stdio;
-                stderr.writefln!"Failed to accept socket connection: %s"(e);
+                warn("Failed to accept socket connection.", e);
             }
         }
     }
@@ -73,10 +76,10 @@ void handleClient(Socket clientSocket, HttpRequestHandler requestHandler) {
     // Get remote address from the socket.
     import handy_http_primitives.address;
     ClientAddress addr = getAddress(clientSocket);
+    traceF!"Handling client request from %s."(addr.toString());
     auto result = readHttpRequest(&bufferedInput, addr);
     if (result.hasError) {
-        import std.stdio;
-        stderr.writeln("Failed to read HTTP request: " ~ result.error.message);
+        warnF!"Failed to read HTTP request: %s"(result.error.message);
         inputStream.closeStream();
         return;
     }
@@ -90,11 +93,9 @@ void handleClient(Socket clientSocket, HttpRequestHandler requestHandler) {
     try {
         requestHandler.handle(request, response);
     } catch (Exception e) {
-        import std.stdio;
-        stderr.writeln("Exception thrown while handling request: " ~ e.msg);
+        error("Exception thrown while handling request.", e);
     } catch (Throwable t) {
-        import std.stdio;
-        stderr.writeln("Throwable error while handling request: " ~ t.msg);
+        errorF!"Throwable error while handling request: %s"(t.msg);
         throw t;
     }
     
