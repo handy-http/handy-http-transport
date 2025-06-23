@@ -1,8 +1,6 @@
 /+ dub.sdl:
     dependency "handy-http-transport" path="../"
     dependency "requests" version="~>2.1"
-    dependency "streams" path="/home/andrew/Code/github-andrewlalis/streams"
-    dependency "slf4d" path="/home/andrew/Code/github-andrewlalis/slf4d"
 +/
 
 /**
@@ -34,8 +32,9 @@ int main() {
         thread.join();
     }
     info("Started server in another thread.");
-    Thread.sleep(msecs(100));
+    Thread.sleep(msecs(100)); // Wait for the server to start.
 
+    // Send a simple GET request to the server.
     auto content = getContent("http://localhost:8080");
     ubyte[] data = content.data;
     if (data.length != 13 || (cast(string) data) != "Hello, world!") {
