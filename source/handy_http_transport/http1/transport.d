@@ -291,7 +291,9 @@ unittest {
  * Parses HTTP headers from an input stream, and returns them as an associative
  * array mapping header names to their list of values.
  * Params:
- *   inputStream = The byte input stream to read from.
+ *   inputStream = The byte input stream to read from. Note that this stream
+ *                 should be passed as a pointer / reference, values will be
+ *                 consumed from the stream.
  * Returns: Either the headers, or a stream error.
  */
 Either!(string[][string], "headers", StreamError, "error") parseHeaders(S)(S inputStream) if (isByteInputStream!S) {
@@ -325,28 +327,33 @@ unittest {
     }
 
     // Basic valid headers.
-    auto r1 = parseHeaders(makeStream("Content-Type: application/json\r\n\r\n"));
+    auto s1 = makeStream("Content-Type: application/json\r\n\r\n");
+    auto r1 = parseHeaders(&s1);
     assert(r1.hasHeaders);
     assert("Content-Type" in r1.headers);
     assert(r1.headers["Content-Type"] == ["application/json"]);
 
     // Multiple headers.
-    auto r2 = parseHeaders(makeStream("Accept: text, json, image\r\nContent-Length: 1234\r\n\r\n"));
+    auto s2 = makeStream("Accept: text, json, image\r\nContent-Length: 1234\r\n\r\n");
+    auto r2 = parseHeaders(&s2);
     assert(r2.hasHeaders);
     assert("Accept" in r2.headers);
     assert(r2.headers["Accept"] == ["text, json, image"]);
     assert(r2.headers["Content-Length"] == ["1234"]);
 
     // Basic invalid header string.
-    auto r3 = parseHeaders(makeStream("Invalid headers"));
+    auto s3 = makeStream("Invalid headers");
+    auto r3 = parseHeaders(&s3);
     assert(r3.hasError);
     
     // No trailing \r\n
-    auto r4 = parseHeaders(makeStream("Content-Type: application/json"));
+    auto s4 = makeStream("Content-Type: application/json");
+    auto r4 = parseHeaders(&s4);
     assert(r4.hasError);
 
     // Empty headers.
-    auto r5 = parseHeaders(makeStream("\r\n"));
+    auto s5 = makeStream("\r\n");
+    auto r5 = parseHeaders(&s5);
     assert(r5.hasHeaders);
     assert(r5.headers.length == 0);
 }

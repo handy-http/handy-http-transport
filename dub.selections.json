@@ -2,9 +2,9 @@
 	"fileVersion": 1,
 	"versions": {
 		"handy-http-primitives": "1.6.0",
-		"photon": "0.10.2",
+		"photon": "0.11.0",
 		"sharded-map": "2.7.0",
-		"slf4d": "4.0.0",
+		"slf4d": "4.0.1",
 		"streams": "3.6.0"
 	}
 }

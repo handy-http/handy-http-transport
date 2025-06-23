@@ -14,8 +14,6 @@ Either!(string, "value", StreamError, "error") consumeUntil(S)(
     S inputStream,
     string target
 ) if (isByteInputStream!S) {
-    import slf4d;
-    // info("consumeUntil called.");
     ubyte[1024] buffer;
     size_t idx;
     while (true) {
@@ -29,8 +27,7 @@ Either!(string, "value", StreamError, "error") consumeUntil(S)(
             return Either!(string, "value", StreamError, "error")(
                 cast(string) buffer[0 .. idx - target.length].idup
             );
-        }
-        if (idx >= buffer.length) {
+        } else if (idx >= buffer.length) {
             return Either!(string, "value", StreamError, "error")(
                 StreamError("Couldn't find target \"" ~ target ~ "\" after reading 1024 bytes.", 1)
             );
@@ -66,7 +63,7 @@ string stripSpaces(string s) {
     while (startIdx < s.length && s[startIdx] == ' ') startIdx++;
     s = s[startIdx .. $];
     if (s.length == 0) return "";
-    ptrdiff_t endIdx = s.length - 1;
+    ptrdiff_t endIdx = cast(ptrdiff_t) s.length - 1;
     while (s[endIdx] == ' ' && endIdx >= 0) endIdx--;
     return s[0 .. endIdx + 1];
 }
