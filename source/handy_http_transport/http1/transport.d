@@ -23,6 +23,12 @@ class Http1Transport : HttpTransport {
     private const ushort port;
     private bool running = false;
 
+    /**
+     * Constructs a new Http1Transport server instance.
+     * Params:
+     *   requestHandler = The request handler to use for all requests.
+     *   port = The port to bind to.
+     */
     this(HttpRequestHandler requestHandler, ushort port = 8080) {
         assert(requestHandler !is null);
         this.serverSocket = new TcpSocket();
@@ -30,18 +36,33 @@ class Http1Transport : HttpTransport {
         this.port = port;
     }
 
+    /**
+     * Starts the server. Internally, this starts the Photon event loop and
+     * accepts incoming connections in a separate fiber. Then, clients are
+     * handled in their own separate fiber (think "coroutine").
+     */
     void start() {
-        debugF!"Starting HTTP1Transport server on port %d."(port);
+        debugF!"Starting server on port %d."(port);
         startloop();
         go(() => runServer());
         runFibers();
     }
 
+    /**
+     * Stops the server. This will mark the server as no longer running, so
+     * no more connections will be accepted.
+     */
     void stop() {
-        debugF!"Stopping HTTP1Transport server on port %d."(port);
+        debugF!"Stopping server on port %d."(port);
         this.running = false;
-        this.serverSocket.shutdown(SocketShutdown.BOTH);
-        this.serverSocket.close();
+        // Send a dummy request to cause the server's blocking accept() call to end.
+        try {
+            Socket dummySocket = new TcpSocket(this.serverSocket.localAddress());
+            dummySocket.shutdown(SocketShutdown.BOTH);
+            dummySocket.close();
+        } catch (SocketOSException e) {
+            warn("Failed to send empty request to stop server.", e);
+        }
     }
 
     private void runServer() {
@@ -58,6 +79,8 @@ class Http1Transport : HttpTransport {
                 warn("Failed to accept socket connection.", e);
             }
         }
+        this.serverSocket.shutdown(SocketShutdown.BOTH);
+        this.serverSocket.close();
     }
 }
 
@@ -76,10 +99,14 @@ void handleClient(Socket clientSocket, HttpRequestHandler requestHandler) {
     // Get remote address from the socket.
     import handy_http_primitives.address;
     ClientAddress addr = getAddress(clientSocket);
-    traceF!"Handling client request from %s."(addr.toString());
+    debugF!"Handling client request from %s."(addr.toString());
     auto result = readHttpRequest(&bufferedInput, addr);
+    debug_("Finished reading HTTP request from client.");
     if (result.hasError) {
-        warnF!"Failed to read HTTP request: %s"(result.error.message);
+        if (result.error.code != -1) {
+            // Only warn if we didn't read an empty request.
+            warnF!"Failed to read HTTP request: %s"(result.error.message);
+        }
         inputStream.closeStream();
         return;
     }
@@ -182,9 +209,17 @@ alias HttpRequestParseResult = Either!(ServerHttpRequest, "request", StreamError
  */
 HttpRequestParseResult readHttpRequest(S)(S inputStream, in ClientAddress addr) if (isByteInputStream!S) {
     auto methodStr = consumeUntil(inputStream, " ");
-    if (methodStr.hasError) return HttpRequestParseResult(methodStr.error);
+    if (methodStr.hasError) {
+        if (methodStr.error.code == 0) {
+            // Set a custom code to indicate an empty request.
+            return HttpRequestParseResult(StreamError(methodStr.error.message, -1));
+        }
+        return HttpRequestParseResult(methodStr.error);
+    }
+
     auto urlStr = consumeUntil(inputStream, " ");
     if (urlStr.hasError) return HttpRequestParseResult(urlStr.error);
+
     auto versionStr = consumeUntil(inputStream, "\r\n");
     if (versionStr.hasError) return HttpRequestParseResult(versionStr.error);
     

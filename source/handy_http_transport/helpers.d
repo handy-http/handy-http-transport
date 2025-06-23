@@ -11,16 +11,18 @@ import streams;
  * Returns: The string that was read, or a stream error.
  */
 Either!(string, "value", StreamError, "error") consumeUntil(S)(
-    ref S inputStream,
+    S inputStream,
     string target
 ) if (isByteInputStream!S) {
+    import slf4d;
+    // info("consumeUntil called.");
     ubyte[1024] buffer;
     size_t idx;
     while (true) {
         auto result = inputStream.readFromStream(buffer[idx .. idx + 1]);
         if (result.hasError) return Either!(string, "value", StreamError, "error")(result.error);
         if (result.count != 1) return Either!(string, "value", StreamError, "error")(
-            StreamError("Failed to read a single element", 1)
+            StreamError("Failed to read a single element", 0)
         );
         idx++;
         if (idx >= target.length && buffer[idx - target.length .. idx] == target) {
