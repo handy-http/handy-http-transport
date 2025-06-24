@@ -18,7 +18,10 @@ import requests;
 import core.thread;
 
 int main() {
-    auto loggingProvider = new shared DefaultProvider(true, Levels.INFO);
+    auto loggingProvider = DefaultProvider.builder()
+        .withRootLoggingLevel(Levels.INFO)
+        .withConsoleSerializer(true, 48)
+        .build();
     configureLoggingProvider(loggingProvider);
 
     HttpTransport transport = new Http1Transport(HttpRequestHandler.of((ref ServerHttpRequest request, ref ServerHttpResponse response) {
