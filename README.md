@@ -26,7 +26,7 @@ class MyHandler : HttpRequestHandler {
 }
 
 void main() {
-    HttpTransport tp = new Http1Transport(new MyHandler(), 8080);
+    HttpTransport tp = new TaskPoolHttp1Transport(new MyHandler(), 8080);
     tp.start();
 }
 ```

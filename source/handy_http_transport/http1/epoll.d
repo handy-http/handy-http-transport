@@ -13,17 +13,18 @@ extern(C) {
 }
 
 import handy_http_transport.interfaces;
+import handy_http_transport.http1;
+import handy_http_primitives;
 import slf4d;
 
-class Http1EpollTransport : HttpTransport {
-    private immutable ushort port;
+class Http1EpollTransport : Http1Transport {
 
-    this(ushort port) {
-        this.port = port;
+    this(HttpRequestHandler requestHandler, ushort port) {
+        super(requestHandler, port);
     }
 
-    void start() {
-
+    override void start() {
+        super.start();
         // Create the server socket.
         enum SOCK_NONBLOCK = 0x4000;
         int listenFd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
@@ -117,9 +118,5 @@ class Http1EpollTransport : HttpTransport {
                 }
             }
         }
-    }
-
-    void stop() {
-
     }
 }
