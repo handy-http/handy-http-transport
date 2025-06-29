@@ -1,6 +1,7 @@
 module handy_http_transport.http1.transport;
 
 import std.socket;
+import core.atomic : atomicStore, atomicLoad;
 
 import handy_http_transport.interfaces;
 import handy_http_transport.helpers;
@@ -14,73 +15,33 @@ import slf4d;
 import photon;
 
 /**
- * The HTTP/1.1 transport protocol implementation, using Dimitry Olshansky's
- * Photon fiber scheduling library for concurrency.
+ * Base class for HTTP/1.1 transport, where different subclasses can define
+ * how the actual socket communication works (threadpool / epoll/ etc).
  */
-class Http1Transport : HttpTransport {
-    private Socket serverSocket;
-    private HttpRequestHandler requestHandler;
-    private const ushort port;
+abstract class Http1Transport : HttpTransport {
+    protected HttpRequestHandler requestHandler;
+    protected immutable ushort port;
     private bool running = false;
 
-    /**
-     * Constructs a new Http1Transport server instance.
-     * Params:
-     *   requestHandler = The request handler to use for all requests.
-     *   port = The port to bind to.
-     */
     this(HttpRequestHandler requestHandler, ushort port = 8080) {
         assert(requestHandler !is null);
-        this.serverSocket = new TcpSocket();
         this.requestHandler = requestHandler;
         this.port = port;
     }
 
-    /**
-     * Starts the server. Internally, this starts the Photon event loop and
-     * accepts incoming connections in a separate fiber. Then, clients are
-     * handled in their own separate fiber (think "coroutine").
-     */
+    bool isRunning() {
+        return atomicLoad(running);
+    }
+
     void start() {
-        debugF!"Starting server on port %d."(port);
-        startloop();
-        go(() => runServer());
-        runFibers();
+        atomicStore(running, true);
+        runServer();
     }
 
-    /**
-     * Stops the server. This will mark the server as no longer running, so
-     * no more connections will be accepted.
-     */
+    protected abstract void runServer();
+
     void stop() {
-        debugF!"Stopping server on port %d."(port);
-        this.running = false;
-        // Send a dummy request to cause the server's blocking accept() call to end.
-        try {
-            Socket dummySocket = new TcpSocket(this.serverSocket.localAddress());
-            dummySocket.shutdown(SocketShutdown.BOTH);
-            dummySocket.close();
-        } catch (SocketOSException e) {
-            warn("Failed to send empty request to stop server.", e);
-        }
-    }
-
-    private void runServer() {
-        this.running = true;
-        serverSocket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, 1);
-        serverSocket.bind(new InternetAddress("127.0.0.1", port));
-        traceF!"Bound to %s."(serverSocket.localAddress().toString());
-        serverSocket.listen(100);
-        while (running) {
-            try {
-                Socket clientSocket = serverSocket.accept();
-                go(() => handleClient(clientSocket, requestHandler));
-            } catch (SocketAcceptException e) {
-                warn("Failed to accept socket connection.", e);
-            }
-        }
-        this.serverSocket.shutdown(SocketShutdown.BOTH);
-        this.serverSocket.close();
+        atomicStore(running, false);
     }
 }
 

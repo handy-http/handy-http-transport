@@ -24,7 +24,7 @@ int main() {
         .build();
     configureLoggingProvider(loggingProvider);
 
-    HttpTransport transport = new Http1Transport(HttpRequestHandler.of(&handleRequest));
+    HttpTransport transport = new TaskPoolHttp1Transport(HttpRequestHandler.of(&handleRequest));
     Thread thread = transport.startInNewThread();
     scope(exit) {
         transport.stop();
