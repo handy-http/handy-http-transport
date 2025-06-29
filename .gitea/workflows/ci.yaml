@@ -28,5 +28,5 @@ jobs:
           compiler: ldc-latest
 
       - name: http1-test
-        working-directory: integration-tests
+        working-directory: integration-tests/http1-basic
         run: dub run --single http1-test.d

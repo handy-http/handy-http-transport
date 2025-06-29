@@ -1,5 +1,5 @@
 /+ dub.sdl:
-    dependency "handy-http-transport" path="../"
+    dependency "handy-http-transport" path="../../"
     dependency "requests" version="~>2.1"
 +/
 
@@ -24,11 +24,7 @@ int main() {
         .build();
     configureLoggingProvider(loggingProvider);
 
-    HttpTransport transport = new Http1Transport(HttpRequestHandler.of((ref ServerHttpRequest request, ref ServerHttpResponse response) {
-        response.headers.add("Content-Type", "text/plain");
-        response.headers.add("Content-Length", "13");
-        response.outputStream.writeToStream(cast(ubyte[]) "Hello, world!");
-    }));
+    HttpTransport transport = new Http1Transport(HttpRequestHandler.of(&handleRequest));
     Thread thread = transport.startInNewThread();
     scope(exit) {
         transport.stop();
@@ -38,6 +34,7 @@ int main() {
     Thread.sleep(msecs(100)); // Wait for the server to start.
 
     // Send a simple GET request to the server.
+    info("Sending GET request to http://localhost:8080");
     auto content = getContent("http://localhost:8080");
     ubyte[] data = content.data;
     if (data.length != 13 || (cast(string) data) != "Hello, world!") {
@@ -47,4 +44,10 @@ int main() {
 
     info("Test completed successfully.");
     return 0;
+}
+
+void handleRequest(ref ServerHttpRequest request, ref ServerHttpResponse response) {
+    response.headers.add("Content-Type", "text/plain");
+    response.headers.add("Content-Length", "13");
+    response.outputStream.writeToStream(cast(ubyte[]) "Hello, world!");
 }
