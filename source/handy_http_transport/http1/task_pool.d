@@ -47,3 +47,12 @@ class TaskPoolHttp1Transport : Http1Transport {
         }
     }
 }
+
+unittest {
+    HttpRequestHandler handler = HttpRequestHandler.of(
+        (ref ServerHttpRequest request, ref ServerHttpResponse response) {
+            response.status = HttpStatus.OK;
+            response.writeBodyString("Testing");
+        });
+    testHttp1Transport(new TaskPoolHttp1Transport(handler));
+}

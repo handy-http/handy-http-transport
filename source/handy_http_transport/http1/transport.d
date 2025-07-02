@@ -12,7 +12,6 @@ import handy_http_primitives.address;
 
 import streams;
 import slf4d;
-import photon;
 
 /**
  * Base class for HTTP/1.1 transport, where different subclasses can define
@@ -42,6 +41,63 @@ abstract class Http1Transport : HttpTransport {
 
     void stop() {
         atomicStore(running, false);
+    }
+}
+
+version(unittest) {
+    /**
+     * A generic test to ensure that any Http1Transport implementation behaves
+     * properly to start & stop, and process requests when running.
+     *
+     * It's assumed that the given transport is configured to run on localhost,
+     * port 8080, and return a standard 200 OK empty response to all requests.
+     * Params:
+     *   transport = The transport implementation to test.
+     */
+    void testHttp1Transport(Http1Transport transport) {
+        import slf4d;
+        import core.thread;
+        import std.string;
+        infoF!"Testing Http1Transport implementation: %s"(transport);
+
+        Thread thread = transport.startInNewThread();
+        Thread.sleep(msecs(100));
+
+        Socket clientSocket1 = new TcpSocket(new InternetAddress(8080));
+        const requestBody = "POST /users HTTP/1.1\r\n" ~
+            "Host: example.com\r\n" ~
+            "Content-Type: text/plain\r\n" ~
+            "Content-Length: 13\r\n" ~
+            "\r\n" ~
+            "Hello, world!";
+        ptrdiff_t bytesSent = clientSocket1.send(requestBody);
+        assert(bytesSent == requestBody.length, "Couldn't send the full request body to the server.");
+
+        ubyte[8192] buffer;
+        size_t totalBytesReceived = 0;
+        ptrdiff_t bytesReceived;
+        do {
+            bytesReceived = clientSocket1.receive(buffer[totalBytesReceived .. $]);
+            if (bytesReceived == Socket.ERROR) {
+                assert(false, "Socket error when attempting to receive a response from the HttpTransport server.");
+            }
+            totalBytesReceived += bytesReceived;
+        } while (bytesReceived > 0);
+         
+        string httpResponseContent = cast(string) buffer[0 .. totalBytesReceived];
+        string[] parts = httpResponseContent.split("\r\n\r\n");
+        assert(parts.length > 0, "HTTP 1.1 response is missing required status and headers section.");
+        string[] headerLines = parts[0].split("\r\n");
+        assert(headerLines.length > 0, "HTTP 1.1 response is missing required status line.");
+        string statusLine = headerLines[0];
+        string[] statusLineParts = statusLine.split(" ");
+        assert(statusLineParts[0] == "HTTP/1.1");
+        assert(statusLineParts[1] == "200");
+        assert(statusLineParts[2] == "OK");
+
+        info("Testing is complete. Stopping the server.");
+        transport.stop();
+        thread.join();
     }
 }
 
