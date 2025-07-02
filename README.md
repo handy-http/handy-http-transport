@@ -10,7 +10,7 @@ implemented so far.
 
 ## HTTP/1.1
 
-Use the `Http1Transport` implementation of `HttpTransport` to serve content
+Use the `TaskPoolHttp1Transport` implementation of `HttpTransport` to serve content
 using the HTTP/1.1 protocol. See the example below:
 
 ```d
