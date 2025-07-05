@@ -33,6 +33,7 @@ abstract class Http1Transport : HttpTransport {
     }
 
     void start() {
+        infoF!"Starting Http1Transport server on port %d."(port);
         atomicStore(running, true);
         runServer();
     }
@@ -40,6 +41,7 @@ abstract class Http1Transport : HttpTransport {
     protected abstract void runServer();
 
     void stop() {
+        infoF!"Stopping Http1Transport server on port %d."(port);
         atomicStore(running, false);
     }
 }
@@ -55,7 +57,6 @@ version(unittest) {
      *   transport = The transport implementation to test.
      */
     void testHttp1Transport(Http1Transport transport) {
-        import slf4d;
         import core.thread;
         import std.string;
         infoF!"Testing Http1Transport implementation: %s"(transport);
@@ -111,31 +112,32 @@ version(unittest) {
  *   requestHandler = The request handler that will handle the received HTTP request.
  */
 void handleClient(Socket clientSocket, HttpRequestHandler requestHandler) {
-    auto inputStream = SocketInputStream(clientSocket);
-    auto bufferedInput = bufferedInputStreamFor!(8192)(inputStream);
+    SocketInputStream* inputStream = new SocketInputStream(clientSocket);
+    BufferedInputStream!(SocketInputStream*, 8192)* bufferedInput
+        = new BufferedInputStream!(SocketInputStream*, 8192)(inputStream);
     // Get remote address from the socket.
     import handy_http_primitives.address;
     ClientAddress addr = getAddress(clientSocket);
-    debugF!"Handling client request from %s."(addr.toString());
-    auto result = readHttpRequest(&bufferedInput, addr);
-    debug_("Finished reading HTTP request from client.");
+    traceF!"Got request from client: %s"(addr.toString());
+    auto result = readHttpRequest(bufferedInput, addr);
     if (result.hasError) {
         if (result.error.code != -1) {
             // Only warn if we didn't read an empty request.
-            warnF!"Failed to read HTTP request: %s"(result.error.message);
+            warnF!"Failed to read request: %s"(result.error.message);
         }
         inputStream.closeStream();
         return;
     }
     scope ServerHttpRequest request = result.request;
     scope ServerHttpResponse response;
-    SocketOutputStream outputStream = SocketOutputStream(clientSocket);
+    SocketOutputStream* outputStream = new SocketOutputStream(clientSocket);
     response.outputStream = outputStreamObjectFor(HttpResponseOutputStream!(SocketOutputStream*)(
-        &outputStream,
+        outputStream,
         &response
     ));
     try {
         requestHandler.handle(request, response);
+        debugF!"%s %s -> %d %s"(request.method, request.url, response.status.code, response.status.text);
     } catch (Exception e) {
         error("Exception thrown while handling request.", e);
     } catch (Throwable t) {

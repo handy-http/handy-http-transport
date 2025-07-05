@@ -49,6 +49,10 @@ class TaskPoolHttp1Transport : Http1Transport {
 }
 
 unittest {
+    import slf4d.default_provider;
+    auto logProvider = DefaultProvider.builder().withRootLoggingLevel(Levels.DEBUG).build();
+    configureLoggingProvider(logProvider);
+
     HttpRequestHandler handler = HttpRequestHandler.of(
         (ref ServerHttpRequest request, ref ServerHttpResponse response) {
             response.status = HttpStatus.OK;
