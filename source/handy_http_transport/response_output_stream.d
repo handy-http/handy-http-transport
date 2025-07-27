@@ -24,6 +24,15 @@ struct HttpResponseOutputStream(S) if (isByteOutputStream!S) {
     }
 
     /**
+     * Determines if the HTTP response headers have been flushed to the
+     * underlying output stream.
+     * Returns: `true` if the headers have been flushed, `false` otherwise.
+     */
+    bool areHeadersFlushed() const {
+        return headersFlushed;
+    }
+
+    /**
      * Writes the given data to the stream. If the referenced HTTP response's
      * status and headers haven't yet been written, they will be written first.
      * Params:
@@ -37,7 +46,6 @@ struct HttpResponseOutputStream(S) if (isByteOutputStream!S) {
             auto result = writeHeaders();
             if (result.hasError) return result;
             bytesWritten += result.count;
-            headersFlushed = true;
         }
         auto result = outputStream.writeToStream(buffer);
         if (result.hasError) return result;
@@ -50,6 +58,10 @@ struct HttpResponseOutputStream(S) if (isByteOutputStream!S) {
      * Returns: The stream result of writing.
      */
     StreamResult writeHeaders() {
+        if (headersFlushed) {
+            return StreamResult(0); // No need to write again.
+        }
+        headersFlushed = true;
         size_t idx = 0;
         char[6] statusCodeBuffer; // Normal HTTP codes are 3 digits, but this leaves room for extensions.
         writeUIntToBuffer(response.status.code, statusCodeBuffer, idx);
@@ -111,13 +123,15 @@ unittest {
     resp.status = HttpStatus.OK;
     resp.headers.add("Content-Type", "text/plain");
     auto httpOut = HttpResponseOutputStream!(ArrayOutputStream!ubyte*)(&os, &resp);
-    resp.outputStream = outputStreamObjectFor(httpOut);
+    resp.outputStream = outputStreamObjectFor(&httpOut);
+    assert(httpOut.areHeadersFlushed() == false);
     StreamResult r = resp.outputStream.writeToStream(cast(ubyte[]) "Hello world!");
     const expectedOutput =
         "HTTP/1.1 200 OK\r\n" ~
         "Content-Type: text/plain\r\n" ~
         "\r\n" ~
         "Hello world!";
+    assert(httpOut.areHeadersFlushed() == true);
     assert(os.toArray() == expectedOutput);
     assert(r.hasCount);
     assert(r.count == os.toArray().length);

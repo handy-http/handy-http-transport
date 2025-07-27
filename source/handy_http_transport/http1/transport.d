@@ -87,7 +87,7 @@ version(unittest) {
          
         string httpResponseContent = cast(string) buffer[0 .. totalBytesReceived];
         string[] parts = httpResponseContent.split("\r\n\r\n");
-        assert(parts.length > 0, "HTTP 1.1 response is missing required status and headers section.");
+        assert(parts.length > 0, "HTTP 1.1 response is missing required status and headers section:\n\n" ~ httpResponseContent);
         string[] headerLines = parts[0].split("\r\n");
         assert(headerLines.length > 0, "HTTP 1.1 response is missing required status line.");
         string statusLine = headerLines[0];
@@ -131,13 +131,22 @@ void handleClient(Socket clientSocket, HttpRequestHandler requestHandler) {
     scope ServerHttpRequest request = result.request;
     scope ServerHttpResponse response;
     SocketOutputStream* outputStream = new SocketOutputStream(clientSocket);
-    response.outputStream = outputStreamObjectFor(HttpResponseOutputStream!(SocketOutputStream*)(
-        outputStream,
-        &response
-    ));
+    HttpResponseOutputStream!(SocketOutputStream*) responseOutputStream
+        = HttpResponseOutputStream!(SocketOutputStream*)(
+            outputStream,
+            &response
+        );
+    response.outputStream = outputStreamObjectFor(&responseOutputStream);
     try {
         requestHandler.handle(request, response);
         debugF!"%s %s -> %d %s"(request.method, request.url, response.status.code, response.status.text);
+        // If the response's headers aren't flushed yet, write them now.
+        if (!responseOutputStream.areHeadersFlushed()) {
+            auto writeResult = responseOutputStream.writeHeaders();
+            if (writeResult.hasError) {
+                errorF!"Failed to write response headers: %s"(writeResult.error.message);
+            }
+        }
     } catch (Exception e) {
         error("Exception thrown while handling request.", e);
     } catch (Throwable t) {
