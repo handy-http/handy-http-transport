@@ -93,7 +93,10 @@ version(unittest) {
         string statusLine = headerLines[0];
         string[] statusLineParts = statusLine.split(" ");
         assert(statusLineParts[0] == "HTTP/1.1");
-        assert(statusLineParts[1] == "200");
+        assert(
+            statusLineParts[1] == "200",
+            format!"Expected status line's HTTP code to be 200, but it was \"%s\"."(statusLineParts[1])
+        );
         assert(statusLineParts[2] == "OK");
 
         info("Testing is complete. Stopping the server.");
@@ -142,6 +145,7 @@ void handleClient(Socket clientSocket, HttpRequestHandler requestHandler) {
         debugF!"%s %s -> %d %s"(request.method, request.url, response.status.code, response.status.text);
         // If the response's headers aren't flushed yet, write them now.
         if (!responseOutputStream.areHeadersFlushed()) {
+            trace("Flushing response headers because they weren't flushed by the request handler.");
             auto writeResult = responseOutputStream.writeHeaders();
             if (writeResult.hasError) {
                 errorF!"Failed to write response headers: %s"(writeResult.error.message);

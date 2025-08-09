@@ -20,8 +20,10 @@ class TaskPoolHttp1Transport : Http1Transport {
     override void runServer() {
         Socket serverSocket = new TcpSocket();
         serverSocket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, 1);
-        serverSocket.bind(new InternetAddress("127.0.0.1", port));
+        serverSocket.bind(parseAddress("127.0.0.1", port));
+        debugF!"Bound the server socket to %s"(serverSocket.localAddress);
         serverSocket.listen(1024);
+        debug_("Server is now listening.");
 
         while (super.isRunning) {
             try {

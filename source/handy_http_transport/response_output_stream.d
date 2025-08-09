@@ -3,6 +3,7 @@ module handy_http_transport.response_output_stream;
 import handy_http_transport.helpers : writeUIntToBuffer;
 import handy_http_primitives : ServerHttpResponse;
 import streams;
+import slf4d;
 
 /**
  * A wrapper around a byte output stream that's used for writing HTTP response
@@ -61,6 +62,7 @@ struct HttpResponseOutputStream(S) if (isByteOutputStream!S) {
         if (headersFlushed) {
             return StreamResult(0); // No need to write again.
         }
+        debug_("Flushing HTTP status and headers to the output stream.");
         headersFlushed = true;
         size_t idx = 0;
         char[6] statusCodeBuffer; // Normal HTTP codes are 3 digits, but this leaves room for extensions.
@@ -69,9 +71,11 @@ struct HttpResponseOutputStream(S) if (isByteOutputStream!S) {
         StreamResult r = outputStream.writeToStream(cast(ubyte[]) "HTTP/1.1 ");
         if (r.hasError) return r;
         size_t writeCount = r.count;
+        traceF!"Wrote HTTP version. Bytes written: %d."(writeCount);
         r = outputStream.writeToStream(cast(ubyte[]) statusCodeBuffer[0..idx]);
         if (r.hasError) return r;
         writeCount += r.count;
+        traceF!"Wrote status code. Bytes written: %d."(writeCount);
         r = outputStream.writeToStream([' ']);
         if (r.hasError) return r;
         writeCount += r.count;
@@ -81,9 +85,11 @@ struct HttpResponseOutputStream(S) if (isByteOutputStream!S) {
         r = outputStream.writeToStream(['\r', '\n']);
         if (r.hasError) return r;
         writeCount += r.count;
+        traceF!"Wrote HTTP status line. Bytes written: %d."(writeCount);
         
         foreach (headerName; response.headers.keys) {
             // Write the header name.
+            traceF!"Writing header name: %s"(headerName);
             r = outputStream.writeToStream(cast(ubyte[]) headerName);
             if (r.hasError) return r;
             writeCount += r.count;
@@ -105,6 +111,7 @@ struct HttpResponseOutputStream(S) if (isByteOutputStream!S) {
             r = outputStream.writeToStream(['\r', '\n']);
             if (r.hasError) return r;
             writeCount += r.count;
+            traceF!"Wrote header %s: %s"(headerName, headerValues);
         }
         r = outputStream.writeToStream(['\r', '\n']); // Trailing CLRF before the body.
         if (r.hasError) return r;
