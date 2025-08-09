@@ -13,8 +13,11 @@ import slf4d;
  * and submitted to the standard task pool.
  */
 class TaskPoolHttp1Transport : Http1Transport {
+    private TaskPool httpTaskPool;
+
     this(HttpRequestHandler requestHandler, ushort port = 8080) {
         super(requestHandler, port);
+        this.httpTaskPool = new TaskPool(5);
     }
 
     override void runServer() {
@@ -31,13 +34,14 @@ class TaskPoolHttp1Transport : Http1Transport {
                 Socket clientSocket = serverSocket.accept();
                 trace("Accepted a new socket.");
                 auto t = task!handleClient(clientSocket, requestHandler);
-                taskPool().put(t);
+                this.httpTaskPool.put(t);
                 trace("Added handleClient() task to the task pool.");
             } catch (SocketAcceptException e) {
                 warn("Failed to accept socket connection.", e);
             }
         }
         serverSocket.close();
+        this.httpTaskPool.stop();
     }
 
     override void stop() {
