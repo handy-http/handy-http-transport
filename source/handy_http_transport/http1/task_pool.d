@@ -27,9 +27,12 @@ class TaskPoolHttp1Transport : Http1Transport {
 
         while (super.isRunning) {
             try {
+                trace("Waiting to accept a new socket.");
                 Socket clientSocket = serverSocket.accept();
+                trace("Accepted a new socket.");
                 auto t = task!handleClient(clientSocket, requestHandler);
                 taskPool().put(t);
+                trace("Added handleClient() task to the task pool.");
             } catch (SocketAcceptException e) {
                 warn("Failed to accept socket connection.", e);
             }
