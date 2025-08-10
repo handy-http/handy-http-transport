@@ -8,22 +8,60 @@ import handy_http_primitives;
 import slf4d;
 
 /**
+ * Configuration options to provide when creating a new Http1Transport
+ * instance.
+ */
+struct Http1TransportConfig {
+    /// The host address to bind to.
+    string host;
+    /// The port to bind to.
+    ushort port;
+    /// The number of workers to use in the task pool.
+    size_t workerCount;
+}
+
+/**
+ * Defines the default configuration options if none are provided. They are:
+ * * Host address 127.0.0.1
+ * * Port 8080
+ * * Worker count of 5.
+ * Returns: The default configuration.
+ */
+Http1TransportConfig defaultConfig() {
+    return Http1TransportConfig(
+        "127.0.0.1",
+        8080,
+        5
+    );
+}
+
+/**
  * An implementation of Http1Transport which uses D's standard library
  * parallelization, where each incoming client request is turned into a task
  * and submitted to the standard task pool.
  */
 class TaskPoolHttp1Transport : Http1Transport {
     private TaskPool httpTaskPool;
+    private immutable Http1TransportConfig config;
 
-    this(HttpRequestHandler requestHandler, ushort port = 8080) {
-        super(requestHandler, port);
-        this.httpTaskPool = new TaskPool(5);
+    /**
+     * Creates a new transport instance using a std.parallelism TaskPool for
+     * handling requests.
+     * Params:
+     *   requestHandler = The handler to call for each incoming request.
+     *   workerCount = The number of workers to use in the task pool.
+     *   port = The port.
+     */
+    this(HttpRequestHandler requestHandler, in Http1TransportConfig config = defaultConfig()) {
+        super(requestHandler, config.port);
+        this.config = config;
+        this.httpTaskPool = new TaskPool(config.workerCount);
     }
 
     override void runServer() {
         Socket serverSocket = new TcpSocket();
         serverSocket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, 1);
-        serverSocket.bind(parseAddress("127.0.0.1", port));
+        serverSocket.bind(parseAddress(config.host, config.port));
         debugF!"Bound the server socket to %s"(serverSocket.localAddress);
         serverSocket.listen(1024);
         debug_("Server is now listening.");
