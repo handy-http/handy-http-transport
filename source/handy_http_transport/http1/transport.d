@@ -59,6 +59,11 @@ version(unittest) {
     void testHttp1Transport(Http1Transport transport) {
         import core.thread;
         import std.string;
+
+        import slf4d.default_provider;
+        auto loggingProvider = new DefaultProvider(Levels.DEBUG);
+        configureLoggingProvider(loggingProvider);
+        
         infoF!"Testing Http1Transport implementation: %s"(transport);
 
         Thread thread = transport.startInNewThread();
@@ -102,6 +107,8 @@ version(unittest) {
         info("Testing is complete. Stopping the server.");
         transport.stop();
         thread.join();
+
+        resetLoggingState();
     }
 }
 
