@@ -49,8 +49,7 @@ class TaskPoolHttp1Transport : Http1Transport {
      * handling requests.
      * Params:
      *   requestHandler = The handler to call for each incoming request.
-     *   workerCount = The number of workers to use in the task pool.
-     *   port = The port.
+     *   config = The configuration settings for this transport instance.
      */
     this(HttpRequestHandler requestHandler, in Http1TransportConfig config = defaultConfig()) {
         super(requestHandler, config.port);
