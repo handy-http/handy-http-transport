@@ -5,7 +5,7 @@
 	"copyright": "Copyright © 2024, Andrew Lalis",
 	"dependencies": {
 		"handy-http-primitives": "~>1.8",
-		"photon": "~>0.15.0",
+		"photon": "~>0.18.9",
 		"slf4d": "~>4.0",
 		"streams": "~>3.6"
 	},
