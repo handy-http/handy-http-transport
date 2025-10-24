@@ -3,6 +3,8 @@ on:
   push:
     paths:
       - 'source/**'
+      - 'dub.json'
+      - 'dub.selections.json'
       - '.gitea/workflows/ci.yaml'
   pull_request:
     types: [opened, reopened, synchronize]
