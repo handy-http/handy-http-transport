@@ -1,5 +1,7 @@
 module handy_http_transport.http1.epoll;
 
+version (Posix) {
+
 import core.sys.posix.sys.socket;
 import core.sys.linux.epoll;
 import core.sys.posix.netinet.in_;
@@ -119,4 +121,6 @@ class Http1EpollTransport : Http1Transport {
             }
         }
     }
+}
+
 }

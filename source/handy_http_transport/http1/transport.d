@@ -226,9 +226,12 @@ ClientAddress getAddress(Socket socket) {
                 a.addr(),
                 a.port()
             ));
-        } else if (auto a = cast(UnixAddress) addr) {
-            return ClientAddress.ofUnixSocket(UnixSocketAddress(a.path()));
         } else {
+            version (Posix) {
+                if (auto a = cast(UnixAddress) addr) {
+                    return ClientAddress.ofUnixSocket(UnixSocketAddress(a.path()));
+                }
+            }
             return ClientAddress(ClientAddressType.UNKNOWN);
         }
     } catch (SocketOSException e) {
